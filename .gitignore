@@ -1,1 +1,5 @@
 .devcontainer
+*.pyc
+*.gz
+*.npz
+**/cs231n/datasets/**

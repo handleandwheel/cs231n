@@ -1,7 +1,6 @@
 from builtins import range
 import numpy as np
 from random import shuffle
-from past.builtins import xrange
 
 
 def svm_loss_naive(W, X, y, reg):
@@ -36,6 +35,8 @@ def svm_loss_naive(W, X, y, reg):
                 continue
             margin = scores[j] - correct_class_score + 1  # note delta = 1
             if margin > 0:
+                dW[:, j] += X[i]
+                dW[:, y[i]] -= X[i]
                 loss += margin
 
     # Right now the loss is a sum over all training examples, but we want it
@@ -55,7 +56,8 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dW /= num_train
+    dW += 2.0 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +80,13 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = X @ W
+    correct_class_scores = scores[np.arange(y.shape[0]), y]
+    margin = scores - correct_class_scores.reshape((-1, 1)) + 1
+    margin[np.arange(y.shape[0]), y] = -1.0
+    mask = margin > 0
+    loss = np.sum(margin[mask]) / X.shape[0]
+    loss += reg * np.sum(W**2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +101,12 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dW = X.transpose() @ np.eye(X.shape[0]) @ mask @ np.eye(W.shape[1])
+    masked_X = np.sum(mask, axis=1, keepdims=True) * X
+    for i in range(W.shape[1]):
+        dW[:, i] -= np.sum(masked_X[y == i, :], axis=0)
+    dW /= X.shape[0]
+    dW += 2.0 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
