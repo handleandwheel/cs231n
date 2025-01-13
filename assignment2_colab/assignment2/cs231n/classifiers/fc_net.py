@@ -59,6 +59,7 @@ class FullyConnectedNet(object):
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
         self.params = {}
+        
 
         ############################################################################
         # TODO: Initialize the parameters of the network, storing all values in    #
@@ -73,8 +74,13 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        
+        for k, (dim_in, dim_out) in enumerate(zip([input_dim, *hidden_dims], [*hidden_dims, num_classes])):
+            self.params["W" + str(k+1)] = np.random.randn(dim_in, dim_out) * weight_scale
+            self.params["b" + str(k+1)] = np.zeros(dim_out)
+            if not k == self.num_layers - 1 and self.normalization:
+                self.params["gamma" + str(k+1)] = np.ones(dim_out)
+                self.params["beta" + str(k+1)] = np.zeros(dim_out)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -147,8 +153,21 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        cache = {}
+        
+        for k in range(self.num_layers-1):
+            
+            W, b = self.params.get(f"W{k+1}", None), self.params.get(f"b{k+1}", None)
+            gamma, beta = self.params.get(f"gamma{k+1}", None), self.params.get(f"beta{k+1}", None)
+            bn_param = self.bn_params[k] if self.normalization else None
+            
+            X, cache[k+1] = affine_n_relu_do_forward(X, W, b, gamma, beta, bn_param, self.normalization, self.use_dropout, self.dropout_param)
+        
+        W, b = self.params.get(f"W{self.num_layers}", None), self.params.get(f"b{self.num_layers}", None)
+        
+        X, cache[self.num_layers] = affine_n_relu_do_forward(X, W, b, None, None, None, None, None, None, True)
+            
+        scores = X
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -174,8 +193,29 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        
+        # compute loss
+        loss, dx = softmax_loss(scores, y)
+        for k in range(self.num_layers):
+            loss += 0.5 * self.reg * np.linalg.norm(self.params["W" + str(k+1)]) ** 2
+        
+        dx, dw, db, dgamma, dbeta = affine_n_relu_do_backward(dx, cache[self.num_layers], None, None, True)
+        grads["W" + str(self.num_layers)] = dw + self.reg * self.params["W" + str(self.num_layers)]
+        grads["b" + str(self.num_layers)] = db
+        
+        for k in reversed(range(self.num_layers-1)):
+            dx, dw, db, dgamma, dbeta = affine_n_relu_do_backward(
+                dx, 
+                cache[k+1], 
+                self.normalization,
+                self.use_dropout
+            )
+            grads["W" + str(k+1)] = dw + self.reg * self.params["W" + str(k+1)]
+            grads["b" + str(k+1)] = db
+            
+            if self.normalization:
+                grads["gamma" + str(k+1)] = dgamma
+                grads["beta" + str(k+1)] = dbeta
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

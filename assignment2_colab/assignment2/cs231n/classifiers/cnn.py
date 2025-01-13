@@ -62,9 +62,14 @@ class ThreeLayerConvNet(object):
         # the start of the loss() function to see how that happens.                #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
-
+    
+        self.params["W1"] = np.random.randn(num_filters, input_dim[0], filter_size, filter_size) * weight_scale
+        self.params["b1"] = np.zeros((num_filters,))
+        self.params["W2"] = np.random.randn(int(input_dim[1]*input_dim[2]*num_filters/4), hidden_dim) * weight_scale
+        self.params["b2"] = np.zeros((hidden_dim,))
+        self.params["W3"] = np.random.randn(hidden_dim, num_classes) * weight_scale
+        self.params["b3"] = np.zeros((num_classes,))
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -102,7 +107,11 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        X, crp_cache = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        X, ar_cache = affine_relu_forward(X, W2, b2)
+        X, a_cache = affine_forward(X, W3, b3)
+        
+        scores = X
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,7 +134,20 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dx = softmax_loss(X, y)
+        
+        # regularization
+        for i in range(3):
+            loss += 0.5 * self.reg * np.linalg.norm(self.params[f'W{i+1}'])**2
+        
+        dx, grads["W3"], grads["b3"] = affine_backward(dx, a_cache)
+        dx, grads["W2"], grads["b2"] = affine_relu_backward(dx, ar_cache)
+        dx, grads["W1"], grads["b1"] = conv_relu_pool_backward(dx, crp_cache)
+        
+        # regularization gradient
+        for i in range(3):
+            grads[f'W{i+1}'] += self.reg * self.params[f'W{i+1}']
+        
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
